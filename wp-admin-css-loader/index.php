@@ -26,14 +26,21 @@ add_filter('admin_init', function() {
 
 // Load the CSS files for admin pages if specified
 add_action('admin_enqueue_scripts', function() {
-  $option = get_option(WpAdminCssLoader::$fieldId);
-  if ($option === '') return;
   foreach (array_map(
-    ['WpAdminCssLoader', 'encodeSpace'],
-    array_map('trim', explode("\n", $option))
-  ) as $i => $url) {
-    if ($url === '') continue;
-    wp_enqueue_style("wpacl-admin-custom-{$i}", $url);
+    ['WpAdminCssLoader', 'separateSrcAndDeps'],
+    explode("\n", get_option(WpAdminCssLoader::$fieldId))
+  ) as $i => $line) {
+    $src = WpAdminCssLoader::optimizeSpaces($line['src']);
+    if ($src === '') continue;
+    wp_enqueue_style(
+      "wpacl-admin-custom-{$i}",
+      $src,
+      // Remove empty string
+      array_values(array_filter(array_map(
+        ['WpAdminCssLoader', 'optimizeSpaces'],
+        explode(',', $line['deps'])
+      ), 'strlen'))
+    );
   }
 });
 
@@ -49,9 +56,24 @@ class WpAdminCssLoader
     $value = esc_html(get_option($id));
     echo "<textarea name=\"$id\" id=\"$id\" rows=\"2\" class=\"large-text code\">$value</textarea>";
   }
-  // Encode spaces
-  static public function encodeSpace($url)
+  // Separate to a src url and a deps strings from a line of textarea
+  static public function separateSrcAndDeps($line)
   {
-    return str_replace(' ', '%20', $url);
+    $posOpening = strpos($line, '[');
+    $posClosing = strpos($line, ']');
+    if (
+      $posOpening === false || $posClosing === false ||
+      ($posClosing - $posOpening) <= 0
+    ) return ['src' => $line, 'deps' => ''];
+    $separated = explode('[', str_replace(']', '', $line));
+    return [
+      'src' => $separated[0],
+      'deps' => isset($separated[1]) ? $separated[1] : ''
+    ];
+  }
+  // Trim and Encode spaces
+  static public function optimizeSpaces($url)
+  {
+    return str_replace(' ', '%20', trim($url));
   }
 }
