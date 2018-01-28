@@ -30,7 +30,7 @@ add_action('admin_enqueue_scripts', function() {
   if ($option === '') return;
   foreach (array_map(
     ['WpAdminCssLoader', 'encodeSpace'],
-    array_map('trim', explode(',', $option))
+    array_map('trim', explode("\n", $option))
   ) as $i => $url) {
     if ($url === '') continue;
     wp_enqueue_style("wpacl-admin-custom-{$i}", $url);
@@ -47,7 +47,7 @@ class WpAdminCssLoader
   {
     $id = $args['id'];
     $value = esc_html(get_option($id));
-    echo "<input name=\"$id\" id=\"$id\" type=\"text\" value=\"$value\" class=\"regular-text code\">";
+    echo "<textarea name=\"$id\" id=\"$id\" rows=\"2\" class=\"large-text code\">$value</textarea>";
   }
   // Encode spaces
   static public function encodeSpace($url)
